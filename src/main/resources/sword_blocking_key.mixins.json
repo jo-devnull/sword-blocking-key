@@ -1,10 +1,12 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "github.jodevnull.{{mod_group}}.mixin",
+  "package": "github.jodevnull.swordblockingkey.mixin",
   "compatibilityLevel": "JAVA_8",
-  "refmap": "{{mod_id}}.refmap.json",
-  "mixins": [],
+  "refmap": "sword_blocking_key.refmap.json",
+  "mixins": [
+    "MixinSwordBlockHandler"
+  ],
   "client": [],
   "injectors": {
     "defaultRequire": 1
