@@ -2,15 +2,9 @@
   "replace": false,
   "values": [
     {
-      "id": "#c:weapons",
-      "required": false
-    },
-
-    {
       "id": "#simplyswords:swords",
       "required": false
     },
-
     {
       "id": "#simplymore:weapon_types/all",
       "required": false
