@@ -2,7 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "github.jodevnull.swordblockingkey.mixin",
-  "compatibilityLevel": "JAVA_8",
+  "compatibilityLevel": "JAVA_21",
   "refmap": "sword_blocking_key.refmap.json",
   "mixins": [
     "MixinSwordBlockHandler"

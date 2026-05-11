@@ -1,41 +1,37 @@
 package github.jodevnull.swordblockingkey.network;
 
+import github.jodevnull.swordblockingkey.SwordBlockingKey;
 import github.jodevnull.swordblockingkey.SwordBlockingKeyClient;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public record SBKSyncPacket(HashSet<UUID> uuids)
+public record SBKSyncPacket(Set<UUID> uuids) implements CustomPacketPayload
 {
-    public static void encode(SBKSyncPacket packet, FriendlyByteBuf buf) {
-        buf.writeInt(packet.uuids().size());
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(SwordBlockingKey.MODID, "sync_packet");
+    public static final CustomPacketPayload.Type<SBKSyncPacket> TYPE = new CustomPacketPayload.Type<>(ID);
 
-        for (var uuid : packet.uuids()) {
-            buf.writeUUID(uuid);
-        }
+    public static final StreamCodec<ByteBuf, SBKSyncPacket> STREAM_CODEC = StreamCodec.composite(
+        ByteBufCodecs.fromCodec(UUIDUtil.CODEC_SET),
+        SBKSyncPacket::uuids,
+        SBKSyncPacket::new
+    );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
-    public static SBKSyncPacket decode(FriendlyByteBuf buf) {
-        final var count = buf.readInt();
-        final var uuids = new HashSet<UUID>();
-
-        for (int i = 0; i < count; i++) {
-            uuids.add(buf.readUUID());
-        }
-
-        return new SBKSyncPacket(uuids);
+    public static void clientHandle(final SBKSyncPacket paylod, final IPayloadContext context) {
+        SwordBlockingKeyClient.sync(paylod.uuids());
     }
 
-    public static void handler(SBKSyncPacket packet, Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> SwordBlockingKeyClient.sync(packet.uuids));
-        });
-
-        context.get().setPacketHandled(true);
-    }
+    public static void serverHandle(final SBKSyncPacket paylod, final IPayloadContext context) {}
 }

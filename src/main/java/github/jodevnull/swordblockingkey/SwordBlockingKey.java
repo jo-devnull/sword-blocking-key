@@ -1,15 +1,16 @@
 package github.jodevnull.swordblockingkey;
 
 import com.mojang.logging.LogUtils;
-import github.jodevnull.swordblockingkey.network.PacketHandler;
+import github.jodevnull.swordblockingkey.network.SBKNetworking;
 import github.jodevnull.swordblockingkey.network.SBKSyncPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLLoader;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.slf4j.Logger;
 
 import java.util.HashSet;
@@ -23,14 +24,12 @@ public class SwordBlockingKey
 
     private static final HashSet<UUID> IS_PRESSING_THE_BLOCK_KEY = new HashSet<>();
 
-    public SwordBlockingKey(FMLJavaModLoadingContext context) {
-        final var modEventBus = context.getModEventBus();
-
-        DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+    public SwordBlockingKey(IEventBus modEventBus, ModContainer modContainer) {
+        if (FMLLoader.getDist() == Dist.CLIENT) {
             modEventBus.addListener(SwordBlockingKeyClient::onRegisterKeymappings);
-        });
+        }
 
-        PacketHandler.register();
+        modEventBus.addListener(SBKNetworking::register);
     }
 
     public static boolean isPressingTheBlockKey(Player player) {
@@ -42,11 +41,11 @@ public class SwordBlockingKey
 
     public static void onKeyPress(ServerPlayer player) {
         IS_PRESSING_THE_BLOCK_KEY.add(player.getUUID());
-        PacketHandler.INSTANCE.send(PacketDistributor.ALL.noArg(), new SBKSyncPacket(IS_PRESSING_THE_BLOCK_KEY));
+        PacketDistributor.sendToAllPlayers(new SBKSyncPacket(IS_PRESSING_THE_BLOCK_KEY));
     }
 
     public static void onKeyRelease(ServerPlayer player) {
         IS_PRESSING_THE_BLOCK_KEY.remove(player.getUUID());
-        PacketHandler.INSTANCE.send(PacketDistributor.ALL.noArg(), new SBKSyncPacket(IS_PRESSING_THE_BLOCK_KEY));
+        PacketDistributor.sendToAllPlayers(new SBKSyncPacket(IS_PRESSING_THE_BLOCK_KEY));
     }
 }

@@ -1,46 +1,47 @@
 package github.jodevnull.swordblockingkey.network;
 
 import github.jodevnull.swordblockingkey.SwordBlockingKey;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.network.NetworkEvent;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.MethodsReturnNonnullByDefault;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-import java.util.UUID;
-import java.util.function.Supplier;
-
-public record SBKeybindPacket(KeyEventType type, UUID playerId)
+@MethodsReturnNonnullByDefault
+public record SBKeybindPacket(KeyEventType eventType) implements CustomPacketPayload
 {
-    public static SBKeybindPacket press(Player player) {
-        return new SBKeybindPacket(KeyEventType.PRESS, player.getUUID());
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(SwordBlockingKey.MODID, "keybind_event");
+    public static final CustomPacketPayload.Type<SBKeybindPacket> TYPE = new CustomPacketPayload.Type<>(ID);
+
+    public static final StreamCodec<ByteBuf, SBKeybindPacket> STREAM_CODEC = StreamCodec.composite(
+        KeyEventType.CODEC,
+        SBKeybindPacket::eventType,
+        SBKeybindPacket::new
+    );
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
-    public static SBKeybindPacket release(Player player) {
-        return new SBKeybindPacket(KeyEventType.RELEASE, player.getUUID());
-    }
+    public static void clientHandle(final SBKeybindPacket paylod, final IPayloadContext context) {}
 
-    public static void encode(SBKeybindPacket packet, FriendlyByteBuf buf) {
-        buf.writeInt(packet.type().ordinal());
-        buf.writeUUID(packet.playerId());
-    }
+    public static void serverHandle(final SBKeybindPacket paylod, final IPayloadContext context) {
+        context.enqueueWork(() -> {
+            final var player = context.player();
 
-    public static SBKeybindPacket decode(FriendlyByteBuf buf) {
-        final var type = KeyEventType.from(buf.readInt());
-        return new SBKeybindPacket(type, buf.readUUID());
-    }
-
-    public static void clientHandle(SBKeybindPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            final var player = ctx.get().getSender();
-
-            if (player == null)
-                return;
-
-            if (packet.type() == KeyEventType.PRESS)
-                SwordBlockingKey.onKeyPress(player);
-            else if (packet.type() == KeyEventType.RELEASE)
-                SwordBlockingKey.onKeyRelease(player);
+            if (paylod.eventType() == KeyEventType.PRESS)
+                SwordBlockingKey.onKeyPress((ServerPlayer) player);
+            else if (paylod.eventType() == KeyEventType.RELEASE)
+                SwordBlockingKey.onKeyRelease((ServerPlayer) player);
+        })
+        .exceptionally(e -> {
+            // Handle exception
+            context.disconnect(Component.translatable("my_mod.networking.failed", e.getMessage()));
+            return null;
         });
-
-        ctx.get().setPacketHandled(true);
     }
 }
